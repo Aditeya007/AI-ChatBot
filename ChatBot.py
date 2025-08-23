@@ -1,4 +1,4 @@
-# DANTE2.py
+# DANTE_Professional.py
 import os
 import json
 from flask import Flask, render_template
@@ -11,17 +11,17 @@ load_dotenv()
 
 # --- AI Configuration ---
 client = OpenAI(api_key=os.getenv("GROQ_API_KEY"), base_url="https://api.groq.com/openai/v1")
-MEMORY_FILE = "dante_memory.json"
+MEMORY_FILE = "dante_memory2.json"  # NAME REVERTED
 universal_role = (
-    "You are Dante, a versatile and stylish AI assistant with the ability to generate code, "
-    "explain concepts, fetch info, give advice, and more. "
-    "Speak in a confident, witty tone like Dante from Devil May Cry. Keep your responses concise and to the point."
-)
+    "You are Dante, a professional AI assistant. Your purpose is to provide clear, accurate, and concise information. "
+    "You can assist with code generation, explaining complex concepts, providing information, and offering well-reasoned advice. "
+    "Communicate in a formal, helpful, and direct tone. Structure complex information with lists or bullet points where appropriate."
+) # TONE CHANGED, NAME REVERTED
 
 # --- Flask App & SocketIO ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-super-secret-key!'
-socketio = SocketIO(app, cors_allowed_origins="*")  # Allow CORS for local testing
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- Memory Functions ---
 def load_memory():
@@ -51,7 +51,7 @@ def groq_chat_with_memory(memory, user_input, model="llama3-8b-8192"):
         return reply
     except Exception as e:
         print(f"Error connecting to Groq API: {e}")
-        return "Oops! Dante is having some trouble. Try again in a minute."
+        return "An error occurred while processing your request. Please try again shortly."
 
 # --- Flask Routes ---
 @app.route('/')
@@ -62,7 +62,7 @@ def index():
 @socketio.on('connect')
 def handle_connect():
     print("DEBUG: Client connected!")
-    emit('response', {'data': "Locked and loaded. What's the job?"})
+    emit('response', {'data': "Connection established. Dante is ready. How may I assist you?"}) # NAME REVERTED
 
 @socketio.on('user_message')
 def handle_user_message(json_data):
@@ -77,5 +77,4 @@ def handle_user_message(json_data):
 
 # --- Main ---
 if __name__ == '__main__':
-    # Use debug=False if you don't want hot reload, but debug=True is okay for local testing
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
