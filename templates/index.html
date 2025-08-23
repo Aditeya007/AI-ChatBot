@@ -12,6 +12,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
+    /* Dark Mode (Default) */
     --bg-primary: #0a0a0f;
     --bg-secondary: #1a1a2e;
     --bg-tertiary: #16213e;
@@ -27,6 +28,33 @@
     --shadow-neon: 0 0 20px rgba(0, 212, 255, 0.4);
     --dante-color: #ff4757;
     --user-color: #00d4ff;
+    --particle-color: rgba(139, 92, 246, 0.1);
+    --input-bg: rgba(26, 26, 46, 0.8);
+    --message-bg-user: linear-gradient(135deg, rgba(0, 212, 255, 0.9) 0%, rgba(139, 92, 246, 0.8) 100%);
+    --message-bg-bot: linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(26, 26, 46, 0.9) 100%);
+}
+
+[data-theme="light"] {
+    /* Light Mode */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #e2e8f0;
+    --bg-tertiary: #cbd5e1;
+    --surface-glass: rgba(255, 255, 255, 0.8);
+    --accent-cyan: #0ea5e9;
+    --accent-purple: #8b5cf6;
+    --accent-pink: #ec4899;
+    --accent-orange: #f97316;
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-glow: rgba(14, 165, 233, 0.3);
+    --shadow-neon: 0 0 20px rgba(14, 165, 233, 0.2);
+    --dante-color: #dc2626;
+    --user-color: #0ea5e9;
+    --particle-color: rgba(139, 92, 246, 0.05);
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --message-bg-user: linear-gradient(135deg, rgba(14, 165, 233, 0.9) 0%, rgba(139, 92, 246, 0.8) 100%);
+    --message-bg-bot: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(255, 255, 255, 0.9) 100%);
 }
 
 * {
@@ -45,30 +73,175 @@ body {
     justify-content: center;
     align-items: center;
     overflow-x: hidden;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
 
-/* Animated background particles */
-body::before {
-    content: '';
+/* Dynamic Background Animation */
+.bg-animation {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
-        radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 40% 60%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
-    animation: particleFloat 20s ease-in-out infinite;
     pointer-events: none;
     z-index: -1;
+    overflow: hidden;
 }
 
-@keyframes particleFloat {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(10px, -10px) rotate(1deg); }
-    50% { transform: translate(-5px, -20px) rotate(-1deg); }
-    75% { transform: translate(-10px, 5px) rotate(0.5deg); }
+.floating-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--particle-color);
+    border-radius: 50%;
+    animation: float 20s infinite linear;
+    opacity: 0.6;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(100vh) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.6;
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(-10vh) translateX(100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.gradient-orbs {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-purple) 0%, transparent 70%);
+    filter: blur(40px);
+    animation: orbFloat 15s ease-in-out infinite;
+    opacity: 0.3;
+}
+
+.orb:nth-child(1) {
+    width: 200px;
+    height: 200px;
+    top: 20%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.orb:nth-child(2) {
+    width: 150px;
+    height: 150px;
+    top: 60%;
+    right: 15%;
+    background: radial-gradient(circle, var(--accent-cyan) 0%, transparent 70%);
+    animation-delay: -5s;
+}
+
+.orb:nth-child(3) {
+    width: 100px;
+    height: 100px;
+    bottom: 20%;
+    left: 60%;
+    background: radial-gradient(circle, var(--accent-pink) 0%, transparent 70%);
+    animation-delay: -10s;
+}
+
+@keyframes orbFloat {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(30px, -30px) scale(1.1);
+    }
+    50% {
+        transform: translate(-20px, -60px) scale(0.9);
+    }
+    75% {
+        transform: translate(-40px, 20px) scale(1.05);
+    }
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    z-index: 1000;
+    background: var(--surface-glass);
+    backdrop-filter: blur(20px);
+    border: 2px solid var(--border-glow);
+    border-radius: 50px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4), var(--shadow-neon);
+}
+
+.theme-toggle-switch {
+    width: 60px;
+    height: 30px;
+    background: var(--accent-purple);
+    border-radius: 15px;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+}
+
+[data-theme="light"] .theme-toggle-switch {
+    background: var(--accent-orange);
+}
+
+.theme-toggle-switch::before {
+    content: '🌙';
+    font-size: 14px;
+    z-index: 2;
+}
+
+.theme-toggle-switch::after {
+    content: '☀️';
+    font-size: 14px;
+    z-index: 2;
+}
+
+.theme-toggle-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .theme-toggle-slider {
+    transform: translateX(30px);
 }
 
 .chat-container {
@@ -89,6 +262,7 @@ body::before {
     position: relative;
     overflow: hidden;
     animation: containerGlow 4s ease-in-out infinite alternate;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes containerGlow {
@@ -106,6 +280,7 @@ body::before {
     text-align: center;
     position: relative;
     overflow: hidden;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chat-header::before {
@@ -138,6 +313,7 @@ body::before {
     position: relative;
     z-index: 2;
     animation: titlePulse 2s ease-in-out infinite alternate;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes titlePulse {
@@ -154,6 +330,11 @@ body::before {
     gap: 20px;
     background: rgba(0, 0, 0, 0.2);
     position: relative;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .chat-messages {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -178,6 +359,12 @@ body::before {
     max-width: 75%;
     animation: messageSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.message:hover {
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.1);
 }
 
 @keyframes messageSlideIn {
@@ -203,6 +390,7 @@ body::before {
     display: flex;
     align-items: center;
     gap: 8px;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .message .sender::before {
@@ -222,11 +410,23 @@ body::before {
     backdrop-filter: blur(10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
 }
 
-.message .text-bubble:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+.message .text-bubble::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    transition: transform 0.6s;
+}
+
+.message:hover .text-bubble::before {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
 }
 
 .user-message {
@@ -245,9 +445,7 @@ body::before {
 }
 
 .user-message .text-bubble {
-    background: linear-gradient(135deg, 
-        rgba(0, 212, 255, 0.9) 0%, 
-        rgba(139, 92, 246, 0.8) 100%);
+    background: var(--message-bg-user);
     color: var(--text-primary);
     border-bottom-right-radius: 6px;
     border: 1px solid rgba(0, 212, 255, 0.3);
@@ -269,9 +467,7 @@ body::before {
 }
 
 .bot-message .text-bubble {
-    background: linear-gradient(135deg, 
-        rgba(255, 71, 87, 0.15) 0%, 
-        rgba(26, 26, 46, 0.9) 100%);
+    background: var(--message-bg-bot);
     color: var(--text-primary);
     border-bottom-left-radius: 6px;
     border: 1px solid rgba(255, 71, 87, 0.3);
@@ -290,6 +486,11 @@ body::before {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(20px);
     align-items: center;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .chat-input {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 #message-input {
@@ -297,7 +498,7 @@ body::before {
     padding: 16px 24px;
     border: 2px solid transparent;
     border-radius: 50px;
-    background: rgba(26, 26, 46, 0.8);
+    background: var(--input-bg);
     color: var(--text-primary);
     font-family: 'Exo 2', sans-serif;
     font-size: 1rem;
@@ -307,6 +508,10 @@ body::before {
     box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
+[data-theme="light"] #message-input {
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
 #message-input::placeholder {
     color: var(--text-muted);
     font-style: italic;
@@ -314,7 +519,7 @@ body::before {
 
 #message-input:focus {
     border: 2px solid var(--accent-cyan);
-    background: rgba(26, 26, 46, 0.95);
+    background: var(--input-bg);
     box-shadow: 
         inset 0 2px 10px rgba(0, 0, 0, 0.3),
         0 0 0 4px rgba(0, 212, 255, 0.2),
@@ -353,6 +558,20 @@ body::before {
     transition: left 0.6s;
 }
 
+#send-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, var(--accent-cyan) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    opacity: 0;
+}
+
 #send-button:hover {
     background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%);
     transform: translateY(-3px);
@@ -363,6 +582,12 @@ body::before {
 
 #send-button:hover::before {
     left: 100%;
+}
+
+#send-button:hover::after {
+    width: 100px;
+    height: 100px;
+    opacity: 0.3;
 }
 
 #send-button:active {
@@ -376,6 +601,29 @@ body::before {
 @media (max-width: 768px) {
     body {
         padding: 10px;
+    }
+    
+    .theme-toggle {
+        top: 20px;
+        right: 20px;
+        padding: 8px;
+    }
+    
+    .theme-toggle-switch {
+        width: 50px;
+        height: 25px;
+        padding: 0 6px;
+    }
+    
+    .theme-toggle-slider {
+        width: 19px;
+        height: 19px;
+        top: 3px;
+        left: 3px;
+    }
+    
+    [data-theme="light"] .theme-toggle-slider {
+        transform: translateX(25px);
     }
     
     .chat-container {
@@ -450,6 +698,23 @@ body::before {
 </head>
 <body>
 
+<!-- Dynamic Background Animation -->
+<div class="bg-animation">
+    <div class="floating-particles"></div>
+    <div class="gradient-orbs">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+</div>
+
+<!-- Theme Toggle -->
+<div class="theme-toggle" onclick="toggleTheme()">
+    <div class="theme-toggle-switch">
+        <div class="theme-toggle-slider"></div>
+    </div>
+</div>
+
 <div class="chat-container">
     <header class="chat-header"><h1>DANTE</h1></header>
     <main class="chat-messages" id="chat-messages"></main>
@@ -465,6 +730,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessages = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
+
+    // Initialize theme
+    const savedTheme = localStorage.getItem('dante-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // Create floating particles
+    createFloatingParticles();
+    
+    // Mouse movement effect for background
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 100;
+        mouseY = (e.clientY / window.innerHeight) * 100;
+        
+        const orbs = document.querySelectorAll('.orb');
+        orbs.forEach((orb, index) => {
+            const speed = (index + 1) * 0.5;
+            const x = (mouseX - 50) * speed;
+            const y = (mouseY - 50) * speed;
+            orb.style.transform = `translate(${x}px, ${y}px)`;
+        });
+    });
+
+    function createFloatingParticles() {
+        const particleContainer = document.querySelector('.floating-particles');
+        const particleCount = 50;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+            particleContainer.appendChild(particle);
+        }
+    }
 
     function appendMessage(sender, message) {
         const messageType = sender === 'Dante' ? 'bot' : 'user';
@@ -498,6 +799,21 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
 });
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('dante-theme', newTheme);
+    
+    // Add a subtle pulse effect to the toggle
+    const toggle = document.querySelector('.theme-toggle');
+    toggle.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+        toggle.style.transform = 'scale(1)';
+    }, 200);
+}
 </script>
 
 </body>
