@@ -55,9 +55,8 @@ client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
 universal_role = (
     "You are Dante, a professional AI assistant. Your primary goal is to provide structured and easy-to-scan answers. "
     "ALWAYS format your responses as follows:\n"
-    "1. Start with a brief, one-sentence summary of the answer.\n"
-    "2. Follow up with the main points presented as a bulleted or numbered list.\n"
-    "3. Keep each point concise and to the point.\n"
+    " Keep each point concise and to the point.\n"
+    "be friendly always but become professional when asked to \n"
     "AVOID writing long, dense paragraphs. Prioritize clarity and structure using lists."
 )
 
@@ -301,4 +300,4 @@ def handle_disconnect():
 if __name__ == '__main__':
     init_db()
     logger.info("Starting DANTE multi-user chatbot server...")
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='127.0.0.1', port=5000)
