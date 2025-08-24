@@ -62,7 +62,7 @@ def index():
 @socketio.on('connect')
 def handle_connect():
     print("DEBUG: Client connected!")
-    emit('response', {'data': "Connection established. Dante is ready. How may I assist you?"}) # NAME REVERTED
+    emit('response', {'data': "Hey there ! Need some help?"}) # NAME REVERTED
 
 @socketio.on('user_message')
 def handle_user_message(json_data):
