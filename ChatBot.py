@@ -1,15 +1,18 @@
-# DANTE_Database.py - Improved Version
+# DANTE_Database.py - Multi-User Version with Fixed Session Management
 import os
 import sqlite3
 import contextlib
 import logging
-import time
 from collections import defaultdict
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_socketio import SocketIO, emit
 from openai import OpenAI
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
+
+## AUTH UPGRADE: Import necessary libraries for authentication and sessions.
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 # --- Load environment variables ---
 load_dotenv()
@@ -20,220 +23,282 @@ if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is required")
 
 DATABASE_FILE = "dante_chat_history.db"
-MAX_MESSAGE_LENGTH = 1000
 MAX_HISTORY_MESSAGES = 50
+SUMMARIZATION_THRESHOLD = 40
+MESSAGES_TO_SUMMARIZE = 30
+
+# --- Flask App & Authentication Setup ---
+app = Flask(__name__)
+# It's crucial to set a secret key for session management.
+app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY", "a-strong-default-secret-key-for-dev")
+
+# FIX: Configure session to expire when browser closes
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # Optional: set a timeout
+app.permanent_session_lifetime = timedelta(minutes=30)
+
+socketio = SocketIO(app)
+
+## AUTH UPGRADE: Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login' # Redirect to login page if user is not authenticated
+
+# FIX: Configure Flask-Login session behavior
+login_manager.session_protection = "strong"  # This helps with session security
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- Rate Limiting ---
-user_requests = defaultdict(list)
-
-def is_rate_limited(session_id, max_requests=10, time_window=60):
-    """Simple rate limiting: max_requests per time_window seconds."""
-    now = time.time()
-    requests = user_requests[session_id]
-    
-    # Remove old requests
-    user_requests[session_id] = [req_time for req_time in requests if now - req_time < time_window]
-    
-    if len(user_requests[session_id]) >= max_requests:
-        return True
-    
-    user_requests[session_id].append(now)
-    return False
-
 # --- AI Configuration ---
 client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
 universal_role = (
-    "You are Dante, a professional AI assistant. Your purpose is to provide clear, accurate, and concise information. "
-    "You can assist with code generation, explaining complex concepts, providing information, and offering well-reasoned advice. "
-    "Communicate in a friendly, helpful, and direct tone. Structure complex information with lists or bullet points where appropriate."
+    "You are Dante, a professional AI assistant. Your primary goal is to provide structured and easy-to-scan answers. "
+    "ALWAYS format your responses as follows:\n"
+    "1. Start with a brief, one-sentence summary of the answer.\n"
+    "2. Follow up with the main points presented as a bulleted or numbered list.\n"
+    "3. Keep each point concise and to the point.\n"
+    "AVOID writing long, dense paragraphs. Prioritize clarity and structure using lists."
 )
 
 # --- Database Connection Management ---
 @contextlib.contextmanager
 def get_db_connection():
-    """Context manager for database connections."""
     conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row
     try:
         yield conn
     finally:
         conn.close()
 
+# --- User Model for Flask-Login ---
+## AUTH UPGRADE: User class required by Flask-Login
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    with get_db_connection() as conn:
+        user_row = conn.execute('SELECT id, username FROM users WHERE id = ?', (user_id,)).fetchone()
+        if user_row:
+            return User(id=user_row['id'], username=user_row['username'])
+    return None
+
+# FIX: Add session cleanup on every request
+@app.before_request
+def make_session_non_permanent():
+    """Ensure sessions don't persist beyond browser closure"""
+    session.permanent = False
+
 # --- Database Setup ---
 def init_db():
-    """Initializes the database and creates the history table if it doesn't exist."""
     with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS history (
+        # AUTH UPGRADE: Create users table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL
             )
         """)
-        # Add index for faster queries
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_timestamp ON history(session_id, timestamp)")
+        
+        # AUTH UPGRADE: Modify history table to use user_id
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_timestamp ON history(user_id, timestamp)")
+        
+        # AUTH UPGRADE: Modify summaries table to use user_id
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS summaries (
+                user_id INTEGER PRIMARY KEY,
+                summary_content TEXT NOT NULL,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
         conn.commit()
-    logger.info("Database initialized successfully")
+    logger.info("Database initialized with users, history, and summaries tables.")
 
-# --- Database Functions ---
-def load_memory_from_db(session_id, max_messages=MAX_HISTORY_MESSAGES):
-    """Load recent conversation history for a specific session from the database."""
+# --- Database Functions (Now User-Centric) ---
+def load_memory_from_db(user_id, max_messages=MAX_HISTORY_MESSAGES):
+    memory = [{"role": "system", "content": universal_role}]
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT role, content FROM history 
-                WHERE session_id = ? 
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            """, (session_id, max_messages))
-            rows = cursor.fetchall()
-        
-        # Reverse to get chronological order
-        rows.reverse()
-        
-        # Start with the system role and add the conversation history
-        memory = [{"role": "system", "content": universal_role}]
-        for row in rows:
-            memory.append({"role": row[0], "content": row[1]})
-        return memory
+            summary_row = conn.execute("SELECT summary_content FROM summaries WHERE user_id = ?", (user_id,)).fetchone()
+            if summary_row:
+                memory.append({"role": "system", "content": f"Summary of conversation so far: {summary_row['summary_content']}"})
+
+            rows = conn.execute("""
+                SELECT role, content FROM history WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?
+            """, (user_id, max_messages)).fetchall()
+            
+            memory.extend([{"role": row['role'], "content": row['content']} for row in reversed(rows)])
+            return memory
     except Exception as e:
-        logger.error(f"Error loading memory from database: {e}")
+        logger.error(f"Error loading memory for user {user_id}: {e}")
         return [{"role": "system", "content": universal_role}]
 
-def add_message_to_db(session_id, role, content):
-    """Save a new message to the database for a specific session."""
+def add_message_to_db(user_id, role, content):
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO history (session_id, role, content) VALUES (?, ?, ?)", 
-                          (session_id, role, content))
+            conn.execute("INSERT INTO history (user_id, role, content) VALUES (?, ?, ?)", (user_id, role, content))
             conn.commit()
     except Exception as e:
-        logger.error(f"Error saving message to database: {e}")
+        logger.error(f"Error saving message for user {user_id}: {e}")
 
-def cleanup_old_sessions(days_old=30):
-    """Remove conversation history older than specified days."""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                DELETE FROM history 
-                WHERE timestamp < datetime('now', '-{} days')
-            """.format(days_old))
-            deleted_count = cursor.rowcount
-            conn.commit()
-        logger.info(f"Cleaned up {deleted_count} old messages (older than {days_old} days)")
-    except Exception as e:
-        logger.error(f"Error during cleanup: {e}")
-
-# --- Input Validation ---
-def validate_message(message):
-    """Validate user message input."""
-    if not message or not isinstance(message, str):
-        return False, "Invalid message format"
-    
-    message = message.strip()
-    if not message:
-        return False, "Please enter a message"
-    
-    if len(message) > MAX_MESSAGE_LENGTH:
-        return False, f"Message too long (max {MAX_MESSAGE_LENGTH} characters)"
-    
-    return True, None
-
-# --- AI Response Function ---
+# --- AI Response & Summarization ---
 def get_ai_response(memory, model="llama3-8b-8192"):
-    """Send conversation history to Groq API and get AI response."""
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=memory,
-            max_tokens=1000,
-            temperature=0.7
-        )
+        response = client.chat.completions.create(model=model, messages=memory, max_tokens=1500, temperature=0.7)
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error connecting to Groq API: {e}")
-        return "I'm experiencing technical difficulties. Please try again in a moment."
+        return "I'm experiencing technical difficulties. Please try again."
 
-# --- Flask App & SocketIO ---
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-super-secret-key!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+def summarize_conversation(messages):
+    summary_prompt = [{"role": "system", "content": "Summarize this conversation concisely, capturing key topics and conclusions."}] + messages
+    try:
+        response = client.chat.completions.create(model="llama3-8b-8192", messages=summary_prompt, max_tokens=500, temperature=0.3)
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Error during summarization: {e}")
+        return None
 
-# --- Flask Routes ---
+def manage_conversation_history(user_id):
+    try:
+        with get_db_connection() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM history WHERE user_id = ?", (user_id,)).fetchone()[0]
+            if count < SUMMARIZATION_THRESHOLD:
+                return
+
+            logger.info(f"History for user {user_id} has {count} messages. Triggering summarization.")
+            
+            rows_to_summarize = conn.execute("SELECT id, role, content FROM history WHERE user_id = ? ORDER BY timestamp ASC LIMIT ?", (user_id, MESSAGES_TO_SUMMARIZE)).fetchall()
+            messages = [{"role": row['role'], "content": row['content']} for row in rows_to_summarize]
+            ids_to_delete = [row['id'] for row in rows_to_summarize]
+
+            new_summary_part = summarize_conversation(messages)
+            if not new_summary_part:
+                return
+
+            existing_summary = conn.execute("SELECT summary_content FROM summaries WHERE user_id = ?", (user_id,)).fetchone()
+            full_summary = f"{existing_summary['summary_content'] if existing_summary else ''}\n\n{new_summary_part}".strip()
+
+            conn.execute("""
+                INSERT INTO summaries (user_id, summary_content, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET summary_content = excluded.summary_content, last_updated = excluded.last_updated;
+            """, (user_id, full_summary))
+
+            if ids_to_delete:
+                conn.execute(f"DELETE FROM history WHERE id IN ({','.join('?' for _ in ids_to_delete)})", ids_to_delete)
+            
+            conn.commit()
+            logger.info(f"Successfully summarized and pruned history for user {user_id}.")
+    except Exception as e:
+        logger.error(f"Error managing history for user {user_id}: {e}")
+
+# --- Flask Routes for Authentication ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        with get_db_connection() as conn:
+            user_row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+            if user_row and check_password_hash(user_row['password_hash'], password):
+                user = User(id=user_row['id'], username=user_row['username'])
+                # FIX: Ensure session doesn't persist beyond browser closure
+                login_user(user, remember=False)
+                session.permanent = False  # Explicitly set session as non-permanent
+                return redirect(url_for('index'))
+            else:
+                flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        with get_db_connection() as conn:
+            if conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone():
+                flash('Username already exists.')
+            else:
+                conn.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)',
+                             (username, generate_password_hash(password)))
+                conn.commit()
+                flash('Registration successful! Please log in.')
+                return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    # FIX: Clear the entire session to ensure clean logout
+    session.clear()
+    return redirect(url_for('login'))
+
+# --- Main Chat Route ---
 @app.route('/')
+@login_required
 def index():
-    return render_template('index.html')
+    # Pass the username to the template
+    return render_template('index.html', username=current_user.username)
 
 # --- SocketIO Events ---
 @socketio.on('connect')
 def handle_connect():
-    session_id = request.sid
-    logger.info(f"Client connected with session ID: {session_id}")
-    emit('response', {'data': "Hey there! Need some help?"})
+    if not current_user.is_authenticated:
+        return False # Disconnect unauthorized users
+    logger.info(f"User {current_user.username} (ID: {current_user.id}) connected.")
+    emit('response', {'data': f"Welcome back, {current_user.username}! How can I help you?"})
 
 @socketio.on('user_message')
 def handle_user_message(json_data):
-    session_id = request.sid
+    if not current_user.is_authenticated:
+        return
+    
     user_message = json_data.get('message', '').strip()
-    
-    # Input validation
-    is_valid, error_msg = validate_message(user_message)
-    if not is_valid:
-        emit('response', {'data': error_msg})
+    if not user_message:
         return
-    
-    # Rate limiting
-    if is_rate_limited(session_id):
-        emit('response', {'data': "Please slow down. Too many requests in a short time."})
-        return
-    
-    logger.info(f"Processing message from {session_id}: {user_message[:50]}...")
+
+    user_id = current_user.id
+    logger.info(f"Processing message from user {user_id}: {user_message[:50]}...")
     
     try:
-        # Save the user's message to the DB
-        add_message_to_db(session_id, "user", user_message)
-        
-        # Load the full conversation history for this session
-        memory = load_memory_from_db(session_id)
-        
-        # Get the AI's response
+        add_message_to_db(user_id, "user", user_message)
+        memory = load_memory_from_db(user_id)
         ai_response = get_ai_response(memory)
+        add_message_to_db(user_id, "assistant", ai_response)
         
-        # Save the AI's response to the DB
-        add_message_to_db(session_id, "assistant", ai_response)
-        
-        logger.info(f"Successfully processed message for session {session_id}")
         emit('response', {'data': ai_response})
-        
+        socketio.start_background_task(manage_conversation_history, user_id)
     except Exception as e:
-        logger.error(f"Error processing message for session {session_id}: {e}")
-        emit('response', {'data': "An error occurred while processing your request. Please try again."})
+        logger.error(f"Error processing message for user {user_id}: {e}")
+        emit('response', {'data': "An error occurred while processing your request."})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    session_id = request.sid
-    logger.info(f"Client disconnected: {session_id}")
-    # Clean up rate limiting data for disconnected users
-    if session_id in user_requests:
-        del user_requests[session_id]
+    if current_user.is_authenticated:
+        logger.info(f"User {current_user.username} disconnected.")
 
 # --- Main ---
 if __name__ == '__main__':
-    try:
-        init_db()
-        # Optional: Clean up old sessions on startup
-        cleanup_old_sessions(30)
-        logger.info("Starting DANTE chatbot server...")
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000)
-    except Exception as e:
-        logger.error(f"Failed to start server: {e}")
-        raise
+    init_db()
+    logger.info("Starting DANTE multi-user chatbot server...")
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
