@@ -5,44 +5,342 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - DANTE</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #0f172a 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glass-card {
+            background: rgba(30, 41, 59, 0.3);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                0 1px 0 0 rgba(255, 255, 255, 0.1) inset;
+        }
+        
+        .input-glow {
+            transition: all 0.3s ease;
+            background: rgba(51, 65, 85, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .input-glow:focus {
+            background: rgba(51, 65, 85, 0.7);
+            border-color: rgba(34, 211, 238, 0.6);
+            box-shadow: 
+                0 0 0 3px rgba(34, 211, 238, 0.1),
+                0 0 20px rgba(34, 211, 238, 0.2),
+                0 4px 20px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #155e75 100%);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 10px 25px rgba(34, 211, 238, 0.3),
+                0 0 30px rgba(34, 211, 238, 0.2);
+            background: linear-gradient(135deg, #0ea5e9 0%, #0891b2 50%, #0e7490 100%);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .floating-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(34, 211, 238, 0.4);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .particle:nth-child(1) { width: 3px; height: 3px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 2px; height: 2px; left: 20%; animation-delay: 1s; }
+        .particle:nth-child(3) { width: 4px; height: 4px; left: 30%; animation-delay: 2s; }
+        .particle:nth-child(4) { width: 2px; height: 2px; left: 40%; animation-delay: 3s; }
+        .particle:nth-child(5) { width: 3px; height: 3px; left: 50%; animation-delay: 4s; }
+        .particle:nth-child(6) { width: 2px; height: 2px; left: 60%; animation-delay: 5s; }
+        .particle:nth-child(7) { width: 4px; height: 4px; left: 70%; animation-delay: 0.5s; }
+        .particle:nth-child(8) { width: 2px; height: 2px; left: 80%; animation-delay: 1.5s; }
+        .particle:nth-child(9) { width: 3px; height: 3px; left: 90%; animation-delay: 2.5s; }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        .title-glow {
+            background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 50%, #0891b2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(34, 211, 238, 0.5);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .error-glow {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            backdrop-filter: blur(10px);
+            animation: errorPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes errorPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.3); }
+        }
+        
+        .link-hover {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .link-hover::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #22d3ee, #06b6d4);
+            transition: width 0.3s ease;
+        }
+        
+        .link-hover:hover::after {
+            width: 100%;
+        }
+        
+        .label-float {
+            transition: all 0.3s ease;
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        .input-group input:focus + label,
+        .input-group input:not(:placeholder-shown) + label {
+            transform: translateY(-28px) scale(0.85);
+            color: #22d3ee;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
-        <h1 class="text-3xl font-bold text-center text-cyan-400">DANTE</h1>
-        <h2 class="text-xl font-medium text-center">Create an Account</h2>
+<body class="text-white flex items-center justify-center min-h-screen relative overflow-hidden">
+    <!-- Floating Particles Background -->
+    <div class="floating-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    
+    <div class="w-full max-w-md p-10 space-y-8 glass-card rounded-2xl shadow-2xl fade-in relative z-10">
+        <!-- Logo/Title Section -->
+        <div class="text-center space-y-3">
+            <h1 class="text-4xl font-bold title-glow tracking-wider">DANTE</h1>
+            <div class="w-16 h-1 bg-gradient-to-r from-cyan-400 to-blue-500 mx-auto rounded-full"></div>
+            <h2 class="text-xl font-light text-slate-300 tracking-wide">Create Your Account</h2>
+        </div>
         
         <!-- Flash messages for errors -->
         {% with messages = get_flashed_messages() %}
           {% if messages %}
-            <div class="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg" role="alert">
-              <strong class="font-bold">Error:</strong>
-              <span class="block sm:inline">{{ messages[0] }}</span>
+            <div class="error-glow text-red-300 px-6 py-4 rounded-xl slide-up" role="alert">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <strong class="font-semibold">Error</strong>
+                    <span class="block sm:inline ml-1">{{ messages[0] }}</span>
+                </div>
+              </div>
             </div>
           {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('register') }}" class="space-y-6">
-            <div>
-                <label for="username" class="text-sm font-medium">Username</label>
-                <input id="username" name="username" type="text" required class="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-cyan-500 focus:border-cyan-500">
+        <form method="POST" action="{{ url_for('register') }}" class="space-y-8 slide-up">
+            <!-- Username Field -->
+            <div class="input-group">
+                <input 
+                    id="username" 
+                    name="username" 
+                    type="text" 
+                    required 
+                    placeholder=" "
+                    class="input-glow mt-1 block w-full px-6 py-4 rounded-xl focus:outline-none transition-all duration-300 text-white placeholder-transparent peer"
+                >
+                <label 
+                    for="username" 
+                    class="absolute left-6 top-4 text-slate-400 transition-all duration-300 pointer-events-none peer-placeholder-shown:top-4 peer-placeholder-shown:left-6 peer-placeholder-shown:text-slate-400 peer-focus:-top-2 peer-focus:left-6 peer-focus:text-cyan-400 peer-focus:text-sm peer-focus:bg-slate-800 peer-focus:px-2 peer-focus:rounded"
+                >
+                    Username
+                </label>
             </div>
-            <div>
-                <label for="password" class="text-sm font-medium">Password</label>
-                <input id="password" name="password" type="password" required class="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-cyan-500 focus:border-cyan-500">
+            
+            <!-- Password Field -->
+            <div class="input-group">
+                <input 
+                    id="password" 
+                    name="password" 
+                    type="password" 
+                    required 
+                    placeholder=" "
+                    class="input-glow mt-1 block w-full px-6 py-4 rounded-xl focus:outline-none transition-all duration-300 text-white placeholder-transparent peer"
+                >
+                <label 
+                    for="password" 
+                    class="absolute left-6 top-4 text-slate-400 transition-all duration-300 pointer-events-none peer-placeholder-shown:top-4 peer-placeholder-shown:left-6 peer-placeholder-shown:text-slate-400 peer-focus:-top-2 peer-focus:left-6 peer-focus:text-cyan-400 peer-focus:text-sm peer-focus:bg-slate-800 peer-focus:px-2 peer-focus:rounded"
+                >
+                    Password
+                </label>
             </div>
-            <div>
-                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
-                    Register
+            
+            <!-- Submit Button -->
+            <div class="pt-4">
+                <button 
+                    type="submit" 
+                    class="btn-primary w-full py-4 px-6 rounded-xl shadow-lg text-white font-semibold text-lg tracking-wide focus:outline-none focus:ring-4 focus:ring-cyan-500 focus:ring-opacity-50 relative overflow-hidden"
+                >
+                    Create Account
                 </button>
             </div>
         </form>
-        <p class="text-sm text-center text-gray-400">
-            Already have an account? <a href="{{ url_for('login') }}" class="font-medium text-cyan-400 hover:text-cyan-300">Log in here</a>
-        </p>
+        
+        <!-- Login Link -->
+        <div class="text-center pt-6 border-t border-slate-700/50">
+            <p class="text-slate-400">
+                Already have an account? 
+                <a 
+                    href="{{ url_for('login') }}" 
+                    class="link-hover font-medium text-cyan-400 hover:text-cyan-300 ml-1"
+                >
+                    Sign in here
+                </a>
+            </p>
+        </div>
+        
+        <!-- Decorative Elements -->
+        <div class="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 rounded-full blur-xl"></div>
+        <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-gradient-to-tr from-purple-500/10 to-cyan-500/10 rounded-full blur-2xl"></div>
     </div>
+
+    <script>
+        // Add smooth focus animations
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('input-focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.classList.remove('input-focused');
+            });
+        });
+
+        // Add button click animation
+        document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.classList.add('ripple');
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+    </script>
+
+    <style>
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
 </body>
 </html>
