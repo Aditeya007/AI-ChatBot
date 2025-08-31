@@ -157,22 +157,37 @@ def add_message_to_db(user_id, role, content):
         logger.error(f"Error saving message for user {user_id}: {e}")
 
 # --- AI Response & Summarization ---
-def get_ai_response(memory, model="llama3-8b-8192"):
+# --- AI Response & Summarization ---
+# Update the model to a supported one
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
+
+def get_ai_response(memory, model=DEFAULT_MODEL):
     try:
-        response = client.chat.completions.create(model=model, messages=memory, max_tokens=1500, temperature=0.7)
+        response = client.chat.completions.create(
+            model=model,
+            messages=memory,
+            max_tokens=1500,
+            temperature=0.7
+        )
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error connecting to Groq API: {e}")
         return "I'm experiencing technical difficulties. Please try again."
 
-def summarize_conversation(messages):
+def summarize_conversation(messages, model=DEFAULT_MODEL):
     summary_prompt = [{"role": "system", "content": "Summarize this conversation concisely, capturing key topics and conclusions."}] + messages
     try:
-        response = client.chat.completions.create(model="llama3-8b-8192", messages=summary_prompt, max_tokens=500, temperature=0.3)
+        response = client.chat.completions.create(
+            model=model,
+            messages=summary_prompt,
+            max_tokens=500,
+            temperature=0.3
+        )
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error during summarization: {e}")
         return None
+
 
 def manage_conversation_history(user_id):
     try:
