@@ -39,50 +39,40 @@ A **Flask-based multi-user AI chatbot** application that provides real-time conv
 4. Run the application
    python ChatBot.py
 
-Usage
+## 📖 Usage
+1. Register a new account at **`/register`** or login with existing credentials at **`/login`** *(ChatBot.py:211-246)*  
+2. Start chatting with Dante on the main interface *(ChatBot.py:257-261)*  
+3. Switch themes using the theme toggle button *(index.html:918-922)*  
+4. Logout using the logout button in the user section *(index.html:798-801)*  
 
-1.Register a new account at /register or login with existing credentials at /login (ChatBot.py:211-246)
+---
 
-2.Start chatting with Dante on the main interface (ChatBot.py:257-261)
+## 🏗 Architecture
+The application uses a **three-table SQLite database design**:
+- **users:** User credentials and authentication  
+- **history:** Individual chat messages with user association  
+- **summaries:** Conversation summaries for memory optimization  
+*(ChatBot.py:96-130)*  
 
-3.Switch themes using the theme toggle button (index.html:918-922)
+---
 
-4.Logout using the logout button in the user section (index.html:798-801)
-
-🏗 Architecture
-
-The application uses a three-table SQLite database design:
-
-users: User credentials and authentication
-
-history: Individual chat messages with user association
-
-summaries: Conversation summaries for memory optimization
-(ChatBot.py:96-130)
-
-🧠 Memory Management
-
+## 🧠 Memory Management
 The system implements intelligent conversation memory management with configurable thresholds:
+- **MAX_HISTORY_MESSAGES = 50** → Maximum messages kept in active memory  
+- **SUMMARIZATION_THRESHOLD = 40** → Message count that triggers summarization  
+- **MESSAGES_TO_SUMMARIZE = 30** → Number of oldest messages to summarize and prune  
+*(ChatBot.py:25-28)*  
 
-MAX_HISTORY_MESSAGES = 50 → Maximum messages kept in active memory
+---
 
-SUMMARIZATION_THRESHOLD = 40 → Message count that triggers summarization
+## 🔧 Configuration
+- Requires **`GROQ_API_KEY`** (environment variable)  
+- Optionally accepts **`FLASK_SECRET_KEY`** for session management *(ChatBot.py:32-37)*  
+- Database file automatically created as **`dante_chat_history.db`** in the app root *(ChatBot.py:25)*  
 
-MESSAGES_TO_SUMMARIZE = 30 → Number of oldest messages to summarize and prune
-(ChatBot.py:25-28)
+---
 
-🔧 Configuration
-
-Requires GROQ_API_KEY (environment variable)
-
-Optionally accepts FLASK_SECRET_KEY for session management (ChatBot.py:32-37)
-
-Database file automatically created as dante_chat_history.db in the app root (ChatBot.py:25)
-
-🔒 Security Features
-
-Session security with non-permanent sessions (expire on browser closure) (ChatBot.py:89-94)
-
-Password hashing using Werkzeug's secure methods (ChatBot.py:14)
-
-Authentication protection on all chat routes (ChatBot.py:274-276)
+## 🔒 Security Features
+- Session security with **non-permanent sessions** (expire on browser closure) *(ChatBot.py:89-94)*  
+- **Password hashing** using Werkzeug's secure methods *(ChatBot.py:14)*  
+- **Authentication protection** on all chat routes *(ChatBot.py:274-276)*  
